@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SmartHouse IoT Dashboard — Real-time sensor monitoring for your smart home">
+    <title>SmartHouse Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Auth Overlay -->
+<div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+        <div class="logo-section">
+            <div class="logo">🏠</div>
+            <h2 id="authTitle">Welcome Back</h2>
+            <p id="authSubtitle">Sign in to your dashboard</p>
+        </div>
+        <div class="auth-form">
+            <div class="auth-error" id="authError"></div>
+            <input type="email" id="authEmail" placeholder="Email" autocomplete="email" />
+            <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" />
+            <button class="btn-primary" id="authSubmit">Sign In</button>
+        </div>
+        <div class="auth-toggle" id="authToggle">
+            Don't have an account? <a id="authToggleLink">Register</a>
+        </div>
+    </div>
+</div>
+
+<!-- App (hidden until authenticated) -->
+<div id="appSection">
+    <header class="header">
+        <div class="header-brand">
+            <div class="logo">🏠</div>
+            <h1>SmartHouse</h1>
+        </div>
+        <div class="header-right">
+            <span class="user-info" id="userEmailSpan"></span>
+            <button class="btn-logout" id="logoutBtn">Logout</button>
+        </div>
+    </header>
+
+    <div class="home-bar">
+        <select id="homeSelect"></select>
+        <div class="add-home-inline">
+            <input type="text" id="newHomeNameInput" placeholder="Home Name" />
+            <input type="text" id="newHomeInput" placeholder="Home ID" />
+            <button class="btn-add" id="addHomeBtn">Add</button>
+        </div>
+    </div>
+
+    <div class="connection-bar">
+        <div class="connection-badge" id="connectionBadge">
+            <span class="connection-dot"></span>
+            <span id="connectionText">Disconnected</span>
+        </div>
+    </div>
+
+    <main class="room-grid" id="roomGrid">
+        <div class="empty-state">
+            <div class="empty-icon">📡</div>
+            <p>Add a home to get started</p>
+        </div>
+    </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

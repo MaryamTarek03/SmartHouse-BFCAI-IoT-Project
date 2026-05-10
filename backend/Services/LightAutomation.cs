@@ -19,8 +19,8 @@ namespace backend.Services;
 public class LightAutomation(MqttService mqtt, OverrideTracker overrides, ILogger<LightAutomation> logger)
 {
     private const int NoMotionThreshold = 4;       // when to decide there is no motion anymore
-    private const double DarkThreshold = 200.0;    // lux — below this, turn light ON
-    private const double BrightThreshold = 400.0;  // lux — above this, turn light OFF (hysteresis)
+    private const double DarkThreshold = 400.0;    // lux — below this, turn light ON
+    private const double BrightThreshold = 800.0;  // lux — above this, turn light OFF (hysteresis)
 
     // (homeId, room) -> consecutive no-motion count
     private readonly ConcurrentDictionary<(string, string), int> _noMotionCounts = new();
@@ -45,6 +45,11 @@ public class LightAutomation(MqttService mqtt, OverrideTracker overrides, ILogge
             if (currentState.LightState == "OFF" && lux <= DarkThreshold)
             {
                 await PublishLightCommand(evt.HomeId, evt.Room,"ON");
+                logger.LogInformation("[AUTO] {Room} light ON (motion detected)", evt.Room);
+            }
+            else if (currentState.LightState == "ON" && lux >= BrightThreshold)
+            {
+                await PublishLightCommand(evt.HomeId, evt.Room,"OFF");
                 logger.LogInformation("[AUTO] {Room} light ON (motion detected)", evt.Room);
             }
         }

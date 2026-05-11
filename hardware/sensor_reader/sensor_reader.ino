@@ -3,8 +3,8 @@
 #include <DHT.h>
 
 // WiFi & MQTT config
-#define WIFI_SSID "WIFI"
-#define WIFI_PASSWORD "PASSWORD"
+#define WIFI_SSID "Etisalat-khrB"
+#define WIFI_PASSWORD "FA1N4BEL"
 const char* BROKER_IP = "192.168.1.12"; 
 const int PORT = 1883;
 
@@ -13,7 +13,7 @@ const char* ROOM = "diningroom";
 
 #define PIN_LED_GREEN D1   // Room Light
 #define PIN_LED_YELLOW D2  // Fan
-#define PIN_LED_RED D5     // Smoke Alarm Indicator
+#define PIN_LED_RED D5     // Smoke Alarm
 #define PIN_PIR D6         // Motion Sensor
 #define PIN_LDR A0         // LDR (Analog Input)
 #define PIN_BUTTON D3      // Door Sensor (Flash Button)
@@ -33,7 +33,6 @@ int lastLdrState = -1;
 int lastButtonState = HIGH;
 bool doorOpen = false;
 
-// MQTT Helpers
 void publishJson(const char* deviceOrSensor, const char* jsonPayload, bool isState = false) {
   char topic[64];
   sprintf(topic, "home/%s/%s/%s/%s", HOME_ID, ROOM, deviceOrSensor, isState ? "state" : "value");
@@ -61,7 +60,6 @@ void on_message(char* topic, byte* payload, unsigned int length) {
   digitalWrite(LED_BUILTIN, HIGH);
 
   // Simple string matching to avoid heavy JSON libraries
-  // If the command contains ("state":"ON") or ("state": "ON"), then it is ON
   bool isOn = (strstr(msg, "\"state\":\"ON\"") != NULL || strstr(msg, "\"state\": \"ON\"") != NULL);
   bool isOff = (strstr(msg, "\"state\":\"OFF\"") != NULL || strstr(msg, "\"state\": \"OFF\"") != NULL);
 
@@ -73,6 +71,85 @@ void on_message(char* topic, byte* payload, unsigned int length) {
     if (isOn) digitalWrite(PIN_LED_YELLOW, HIGH);
     else if (isOff) digitalWrite(PIN_LED_YELLOW, LOW);
   }
+}
+
+void readPIR() {
+  int currentPirState = digitalRead(PIN_PIR);
+  if (currentPirState != lastPirState) {
+    lastPirState = currentPirState;
+    char payload[64];
+    sprintf(payload, "{\"detected\":%s}", currentPirState == HIGH ? "true" : "false");
+    publishJson("motion", payload);
+    Serial.printf("[PIR] Motion %s\n", currentPirState == HIGH ? "Detected" : "Ended");
+  }
+}
+
+void readDoor() {
+  int currentButtonState = digitalRead(PIN_BUTTON);
+  if (currentButtonState == LOW && lastButtonState == HIGH) {
+    doorOpen = !doorOpen;
+    char payload[64];
+    sprintf(payload, "{\"state\":\"%s\"}", doorOpen ? "OPEN" : "CLOSED");
+    publishJson("door", payload, true); 
+    Serial.printf("[DOOR] Toggled to %s\n", doorOpen ? "OPEN" : "CLOSED");
+    delay(200);
+  }
+  lastButtonState = currentButtonState;
+}
+
+void readTemperature() {
+  float t = dht.readTemperature();
+  if (!isnan(t)) {
+    char payload[64];
+    sprintf(payload, "{\"value\":%.1f,\"unit\":\"C\"}", t);
+    Serial.printf("{\"value\":%.1f,\"unit\":\"C\"}\n", t);
+    publishJson("temperature", payload);
+  }
+}
+
+void readLDR() {
+  int rawLdr = analogRead(PIN_LDR);
+  int adjustedLdr = constrain(map(rawLdr, 600, 1023, 0, 1023), 0, 1023);
+  
+  if (abs(adjustedLdr - lastLdrState) > 20 || lastLdrState == -1) {
+    int temp = lastLdrState;
+    lastLdrState = adjustedLdr;
+    
+    char payload[64];
+    sprintf(payload, "{\"value\":%d,\"unit\":\"lux\"}", adjustedLdr);
+    publishJson("lightlevel", payload);
+    Serial.printf("[LDR] Analog %d -> %d lux [RAW] %d\n", temp, adjustedLdr, rawLdr);
+  }
+}
+
+void simulateSmoke() {
+  bool hasSmoke = (random(100) < 20); 
+  digitalWrite(PIN_LED_RED, hasSmoke ? HIGH : LOW);
+  
+  char payload[64];
+  sprintf(payload, "{\"detected\":%s}", hasSmoke ? "true" : "false");
+  publishJson("smoke", payload);
+  
+  if (hasSmoke) Serial.println("[SMOKE] 🚨 Simulated smoke detected!");
+}
+
+void publishAllSensors() {
+  Serial.println("[SYSTEM] Publishing initial sensor states...");
+  
+  char payload[64];
+
+  sprintf(payload, "{\"state\":\"%s\"}", doorOpen ? "OPEN" : "CLOSED");
+  publishJson("door", payload, true);
+
+  sprintf(payload, "{\"detected\":%s}", lastPirState == HIGH ? "true" : "false");
+  publishJson("motion", payload);
+
+  lastLdrState = -1; 
+  readTemperature();
+  readLDR();
+
+  sprintf(payload, "{\"detected\":false}");
+  publishJson("smoke", payload);
 }
 
 void reconnect() {
@@ -88,6 +165,8 @@ void reconnect() {
       char subTopic[64];
       sprintf(subTopic, "home/%s/%s/+/state", HOME_ID, ROOM);
       client.subscribe(subTopic);
+      
+      publishAllSensors();
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -98,7 +177,6 @@ void reconnect() {
 }
 
 void setup() {
-  // Serial.begin(115200);
   Serial.begin(9600);
   
   pinMode(LED_BUILTIN, OUTPUT);
@@ -142,70 +220,18 @@ void loop() {
 
   unsigned long now = millis();
 
-  // Read sensors (PIR and Door)
-  int currentPirState = digitalRead(PIN_PIR);
-  if (currentPirState != lastPirState) {
-    lastPirState = currentPirState;
-    char payload[64];
-    sprintf(payload, "{\"detected\":%s}", currentPirState == HIGH ? "true" : "false");
-    publishJson("motion", payload);
-    Serial.printf("[PIR] Motion %s\n", currentPirState == HIGH ? "Detected" : "Ended");
-  }
+  readPIR();
+  readDoor();
 
-  // Button acts as a Door toggle
-  int currentButtonState = digitalRead(PIN_BUTTON);
-  if (currentButtonState == LOW && lastButtonState == HIGH) {
-    // Button pressed: Toggle Door State
-    doorOpen = !doorOpen;
-    char payload[64];
-    sprintf(payload, "{\"state\":\"%s\"}", doorOpen ? "OPEN" : "CLOSED");
-    publishJson("door", payload, true); // door uses /state topic
-    Serial.printf("[DOOR] Toggled to %s\n", doorOpen ? "OPEN" : "CLOSED");
-    delay(200); // Simple debounce
-  }
-  lastButtonState = currentButtonState;
-
-  // Read sensors every 5 seconds (DHT & LDR)
   if (now - lastSensorRead > 5000) {
     lastSensorRead = now;
-
-    // Temperature
-    float t = dht.readTemperature();
-    if (!isnan(t)) {
-      char payload[64];
-      sprintf(payload, "{\"value\":%.1f,\"unit\":\"C\"}", t);
-      Serial.printf("{\"value\":%.1f,\"unit\":\"C\"}\n", t);
-      publishJson("temperature", payload);
-    }
-
-    // Light Level (LDR) 
-    // Read analog value (0 - 1023)
-    int rawLdr = analogRead(PIN_LDR);
-    int adjustedLdr = constrain(map(rawLdr, 600, 1023, 0, 1023), 0, 1023);
-    
-    if (abs(adjustedLdr - lastLdrState) > 20 || lastLdrState == -1) {
-      int temp = lastLdrState;
-      lastLdrState = adjustedLdr;
-      
-      char payload[64];
-      sprintf(payload, "{\"value\":%d,\"unit\":\"lux\"}", adjustedLdr);
-      publishJson("lightlevel", payload);
-      Serial.printf("[LDR] Analog %d -> %d lux [RAW] %d\n", temp, adjustedLdr, rawLdr);
-    }
+    readTemperature();
+    readLDR();
   }
 
   // Random Smoke Simulation every 10 seconds
   if (now - lastSmokeCheck > 10000) {
     lastSmokeCheck = now;
-    
-    bool hasSmoke = (random(100) < 20); 
-    
-    digitalWrite(PIN_LED_RED, hasSmoke ? HIGH : LOW);
-    
-    char payload[64];
-    sprintf(payload, "{\"detected\":%s}", hasSmoke ? "true" : "false");
-    publishJson("smoke", payload);
-    
-    if (hasSmoke) Serial.println("[SMOKE] 🚨 Simulated smoke detected!");
+    simulateSmoke();
   }
 }

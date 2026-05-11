@@ -19,6 +19,16 @@ public class HomeStateStore
     /// </summary>
     public event Action<string, RoomState>? OnStateChanged;
 
+    /// <summary>
+    /// Fires when a system log message is generated for a home.
+    /// </summary>
+    public event Action<string, string>? OnSystemLog;
+
+    public void LogMessage(string homeId, string message)
+    {
+        OnSystemLog?.Invoke(homeId, message);
+    }
+
     public void Update(string homeId, SensorEvent evt)
     {
         var rooms = _homes.GetOrAdd(homeId, _ => new ConcurrentDictionary<string, RoomState>());

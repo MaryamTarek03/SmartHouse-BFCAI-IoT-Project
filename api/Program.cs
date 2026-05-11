@@ -93,6 +93,12 @@ store.OnStateChanged += (homeId, roomState) =>
         .SendAsync("SensorUpdated", homeId, roomState);
 };
 
+store.OnSystemLog += (homeId, message) =>
+{
+    _ = hubContext.Clients.Group($"home-{homeId}")
+        .SendAsync("SystemLog", message);
+};
+
 app.MapAuthEndpoints();
 app.MapHomeEndpoints();
 app.MapHub<HomeHub>("/hub/home");

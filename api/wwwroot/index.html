@@ -7,6 +7,7 @@
     <title>SmartHouse Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,7 +16,7 @@
 <div class="auth-overlay" id="authOverlay">
     <div class="auth-card">
         <div class="logo-section">
-            <div class="logo">🏠</div>
+            <div class="logo"><i class="fa-solid fa-house-signal"></i></div>
             <h2 id="authTitle">Welcome Back</h2>
             <p id="authSubtitle">Sign in to your dashboard</p>
         </div>
@@ -34,24 +35,30 @@
 <!-- App (hidden until authenticated) -->
 <div id="appSection">
     <header class="header">
-        <div class="header-brand">
-            <div class="logo">🏠</div>
-            <h1>SmartHouse</h1>
-        </div>
         <div class="header-right">
             <span class="user-info" id="userEmailSpan"></span>
-            <button class="btn-logout" id="logoutBtn">Logout</button>
+            <a href="analytics.html" class="btn-small" title="Analytics"><i class="fa-solid fa-chart-pie"></i> Analytics</a>
+            <button class="btn-icon" id="logoutBtn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
         </div>
     </header>
 
-    <div class="home-bar">
-        <select id="homeSelect"></select>
-        <div class="add-home-inline">
-            <input type="text" id="newHomeNameInput" placeholder="Home Name" />
-            <input type="text" id="newHomeInput" placeholder="Home ID" />
-            <button class="btn-add" id="addHomeBtn">Add</button>
+    <!-- HOMES LIST VIEW -->
+    <div id="homesListView">
+        <div class="homes-header">
+            <h2>My Homes</h2>
+            <button class="btn-primary" id="openAddHomeModalBtn"><i class="fa-solid fa-plus"></i> Add New Home</button>
+        </div>
+        <div class="homes-grid" id="homesGrid">
+            <!-- Home cards injected here -->
         </div>
     </div>
+
+    <!-- HOME DETAIL VIEW -->
+    <div id="homeDetailView" style="display: none;">
+        <div class="home-detail-header">
+            <button class="btn-small" id="backToHomesBtn"><i class="fa-solid fa-arrow-left"></i> Back to Homes</button>
+            <h2 id="currentHomeTitle">Loading...</h2>
+        </div>
 
     <div class="connection-bar">
         <div class="connection-badge" id="connectionBadge">
@@ -60,13 +67,46 @@
         </div>
     </div>
 
-    <main class="room-grid" id="roomGrid">
-        <div class="empty-state">
-            <div class="empty-icon">📡</div>
-            <p>Add a home to get started</p>
-        </div>
-    </main>
+    <div class="dashboard-layout">
+        <main class="room-grid" id="roomGrid">
+            <div class="empty-state">
+                <div class="empty-icon"><i class="fa-solid fa-house-circle-exclamation"></i></div>
+                <p>No rooms found</p>
+            </div>
+        </main>
+        
+        <aside class="log-panel">
+            <div class="log-header">
+                <h3>System Logs</h3>
+                <button id="clearLogsBtn">Clear</button>
+            </div>
+            <div class="log-container" id="logContainer">
+                <div class="log-message system">Awaiting logs...</div>
+            </div>
+        </aside>
+    </div>
+    </div> <!-- End Home Detail View -->
 </div>
+
+<!-- Add Home Modal -->
+<div class="auth-overlay hidden" id="addHomeModal">
+    <div class="auth-card" style="position: relative;">
+        <button id="closeAddHomeModalBtn" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem;"><i class="fa-solid fa-xmark"></i></button>
+        <div class="logo-section">
+            <div class="logo"><i class="fa-solid fa-house-medical"></i></div>
+            <h2>Add New Home</h2>
+            <p>Register a new SmartHouse gateway</p>
+        </div>
+        <div class="auth-form">
+            <input type="text" id="newHomeNameInput" placeholder="Home Name (e.g., My Apartment)" />
+            <input type="text" id="newHomeInput" placeholder="Gateway ID (e.g., home_123)" />
+            <button class="btn-primary" id="addHomeBtn"><i class="fa-solid fa-plus"></i> Register Home</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notifications Container -->
+<div class="toast-container" id="toastContainer"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
 <script src="app.js"></script>

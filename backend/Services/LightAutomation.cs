@@ -16,7 +16,7 @@ namespace backend.Services;
 /// 
 /// Respects manual overrides.
 /// </summary>
-public class LightAutomation(MqttService mqtt, OverrideTracker overrides, ILogger<LightAutomation> logger)
+public class LightAutomation(MqttService mqtt, OverrideTracker overrides, HomeStateStore store, ILogger<LightAutomation> logger)
 {
     private const int NoMotionThreshold = 4;       // when to decide there is no motion anymore
     private const double DarkThreshold = 400.0;    // lux — below this, turn light ON
@@ -45,7 +45,9 @@ public class LightAutomation(MqttService mqtt, OverrideTracker overrides, ILogge
             if (currentState.LightState == "OFF" && lux <= DarkThreshold)
             {
                 await PublishLightCommand(evt.HomeId, evt.Room,"ON");
-                logger.LogInformation("[AUTO] {Room} light ON (motion detected)", evt.Room);
+                var msg = $"[AUTO] {evt.Room} light ON (motion detected)";
+                logger.LogInformation(msg);
+                store.LogMessage(evt.HomeId, msg);
             }
             else if (currentState.LightState == "ON" && lux >= BrightThreshold)
             {
@@ -61,7 +63,9 @@ public class LightAutomation(MqttService mqtt, OverrideTracker overrides, ILogge
             if ((count >= NoMotionThreshold || lux >= BrightThreshold) && currentState.LightState == "ON")
             {
                 await PublishLightCommand(evt.HomeId, evt.Room, "OFF");
-                logger.LogInformation("[AUTO] {Room} light OFF (no motion x{Count})", evt.Room, count);
+                var msg = $"[AUTO] {evt.Room} light OFF (no motion or bright)";
+                logger.LogInformation(msg);
+                store.LogMessage(evt.HomeId, msg);
             }
         }
     }

@@ -15,6 +15,7 @@ namespace backend.Services;
 public class TemperatureFanAutomation(
     MqttService mqtt,
     OverrideTracker overrides,
+    HomeStateStore store,
     ILogger<TemperatureFanAutomation> logger)
 {
     private const double FanOnThreshold = 30.0;
@@ -34,12 +35,16 @@ public class TemperatureFanAutomation(
         if (temp >= FanOnThreshold && motion && currentState.FanState == "OFF")
         {
             await PublishFanCommand(evt.HomeId, evt.Room, "ON");
-            logger.LogInformation("[AUTO] {Room} fan ON (temp {Temp:F1}°C >= {Threshold}°C)", evt.Room, temp, FanOnThreshold);
+            var msg = $"[AUTO] {evt.Room} fan ON (temp {temp:F1}°C >= {FanOnThreshold}°C)";
+            logger.LogInformation(msg);
+            store.LogMessage(evt.HomeId, msg);
         }
         else if (temp <= FanOffThreshold && currentState.FanState == "ON")
         {
             await PublishFanCommand(evt.HomeId, evt.Room, "OFF");
-            logger.LogInformation("[AUTO] {Room} fan OFF (temp {Temp:F1}°C <= {Threshold}°C)", evt.Room, temp, FanOffThreshold);
+            var msg = $"[AUTO] {evt.Room} fan OFF (temp {temp:F1}°C <= {FanOffThreshold}°C)";
+            logger.LogInformation(msg);
+            store.LogMessage(evt.HomeId, msg);
         }
     }
 
